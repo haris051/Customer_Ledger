@@ -292,44 +292,36 @@ BEGIN
   
 	-- =========== Beginning Balance ===========
 
-    SET @QRY = CONCAT('SELECT CASE
+    SET @QRY = CONCAT('SELECT FORM_ID,
+							  CASE
 								 WHEN FORM IS NOT NULL THEN CUSTOMER_ID
 								 ELSE NULL
 							  END AS Customer,
 							  ENTRY_DATE,
 							  PAYPAL_TRANSACTION_ID,
 							  FORM,
-                              CASE
-								 WHEN ENTRY_DATE IS NOT NULL THEN Round(SUM(DEBIT),2)
-								 ELSE Round(IFNULL(SUM(DEBIT), 0),2)
-							  END AS DEBIT,
-                              CASE
-								 WHEN ENTRY_DATE IS NOT NULL THEN Round(SUM(CREDIT),2)
-								 ELSE Round(IFNULL(SUM(CREDIT), 0),2)
-							  END AS CREDIT,
-							  Round(SUM(FINAL),2) AS FINAL,
-							  CASE
-								 WHEN ENTRY_DATE IS NOT NULL THEN Round(SUM(BALANCE),2)
-								 ELSE Round((IFNULL(SUM(DEBIT), 0) - IFNULL(SUM(CREDIT), 0)),2)
-							  END AS BALANCE,
+                              Round(cast(SUM(DEBIT) as Decimal(22,2)),2) As DEBIT,
+                              Round(cast(SUM(CREDIT)as Decimal(22,2)),2) AS CREDIT,
+							  Round(cast(SUM(FINAL) as Decimal(22,2)),2) AS BALANCE,
+                              ',BEGININGBALANCE,' as BEG_BAL,
 							  COUNT(*) OVER() AS TOTAL_ROWS
-					     FROM ( SELECT CUSTOMER_ID,
+					     FROM ( SELECT FORM_ID,
+									   CUSTOMER_ID,
 									   ENTRY_DATE,
 									   PAYPAL_TRANSACTION_ID,
                                        FLAG,
 									   FORM,
 									   DEBIT,
 									   CREDIT,
-									   FINAL,
-									   SUM(FINAL) OVER (PARTITION BY CUSTOMER_ID 
-													    ORDER BY CUSTOMER_ID, ENTRY_DATE, PAYPAL_TRANSACTION_ID, FLAG, FORM, DEBIT, CREDIT, FINAL) 
-												  AS BALANCE
-								  FROM ( SELECT CUSTOMER_ID, 
+									   FINAL
+								  FROM ( SELECT 
+												ID as FORM_ID,
+												CUSTOMER_ID, 
 											    "" AS ENTRY_DATE, 
 											    "" AS PAYPAL_TRANSACTION_ID, 
 											    ''X'' AS FLAG, 
 											    ''Beginning Balance'' AS FORM,
-											    SUM(TOTAL_AMOUNT) + IFNULL((\'',BEGININGBALANCE,'\'),0)  AS DEBIT,
+											    NULL  AS DEBIT,
 											    NULL AS CREDIT,
 											    SUM(TOTAL_AMOUNT) + IFNULL((\'',BEGININGBALANCE,'\'),0) AS FINAL
 										   FROM CUSTOMER
@@ -337,11 +329,12 @@ BEGIN
 												   WHEN \'',P_CUSTOMER_ID,'\' <> "" THEN ID = \'',P_CUSTOMER_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY CUSTOMER_ID, ENTRY_DATE
+									   GROUP BY CUSTOMER_ID, ENTRY_DATE,ID
                                                 
                                          UNION ALL
                                          
-                                         SELECT B.CUSTOMER_ID, 
+                                         SELECT A.ID as FORM_ID,
+												B.CUSTOMER_ID, 
 											    A.SI_ENTRY_DATE AS ENTRY_DATE, 
 											    A.PAYPAL_TRANSACTION_ID, 
 											    ''V'' AS FLAG, 
@@ -368,11 +361,12 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.CUSTOMER_ID, A.SI_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID
+									   GROUP BY B.CUSTOMER_ID, A.SI_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID,A.ID
 											 
 									     UNION ALL 
 									   
-									     SELECT B.CUSTOMER_ID, 
+									     SELECT A.ID as FORM_ID,
+												B.CUSTOMER_ID, 
 											    A.ST_ENTRY_DATE AS ENTRY_DATE, 
 											    A.ST_ID AS PAYPAL_TRANSACTION_ID, 
 											    ''C'' AS FLAG, 
@@ -399,11 +393,12 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_FROM_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.CUSTOMER_ID, A.ST_ENTRY_DATE, A.ST_ID
+									   GROUP BY B.CUSTOMER_ID, A.ST_ENTRY_DATE, A.ST_ID,A.ID
 											  
 									     UNION ALL
 										
-									     SELECT B.CUSTOMER_ID, 
+									     SELECT A.ID as FORM_ID,
+												B.CUSTOMER_ID, 
 											    A.PS_ENTRY_DATE AS ENTRY_DATE, 
 											    A.PAYPAL_TRANSACTION_ID, 
 											    ''P'' AS FLAG,
@@ -430,11 +425,12 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.CUSTOMER_ID, A.PS_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID
+									   GROUP BY B.CUSTOMER_ID, A.PS_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID,A.iD
 											  
 									     UNION ALL 
 										
-									     SELECT B.CUSTOMER_ID, 
+									     SELECT A.ID as FORM_ID,
+												B.CUSTOMER_ID, 
 											    A.PC_ENTRY_DATE AS ENTRY_DATE, 
 											    A.PAYPAL_TRANSACTION_ID, 
 											    ''R'' AS FLAG, 
@@ -461,11 +457,12 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.CUSTOMER_ID, A.PC_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID
+									   GROUP BY B.CUSTOMER_ID, A.PC_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID,A.ID
 											  
 									     UNION ALL 
 									   
-									     SELECT B.CUSTOMER_ID, 
+									     SELECT A.ID as FORM_ID,
+												B.CUSTOMER_ID, 
 											    A.SR_ENTRY_DATE AS ENTRY_DATE, 
 											    A.PAYPAL_TRANSACTION_ID, 
 											    ''Q'' AS FLAG, 
@@ -492,11 +489,12 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.CUSTOMER_ID, A.SR_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID
+									   GROUP BY B.CUSTOMER_ID, A.SR_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID,A.ID
 											  
 									     UNION ALL
 
-									     SELECT B.CUSTOMER_ID, 
+									     SELECT A.ID as FORM_ID,
+												B.CUSTOMER_ID, 
 											    A.RM_ENTRY_DATE AS ENTRY_DATE, 
 											    A.PAYPAL_TRANSACTION_ID, 
 											    ''M'' AS FLAG, 
@@ -523,11 +521,12 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.CUSTOMER_ID, A.RM_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID
+									   GROUP BY B.CUSTOMER_ID, A.RM_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID,A.ID
 											  
 									     UNION ALL
 
-									     SELECT B.CUSTOMER_ID, 
+									     SELECT A.ID as FORM_ID,
+												B.CUSTOMER_ID, 
 											    A.REP_ENTRY_DATE AS ENTRY_DATE, 
 											    A.PAYPAL_TRANSACTION_ID, 
 											    ''X'' AS FLAG, 
@@ -555,11 +554,12 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.CUSTOMER_ID, A.REP_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID
+									   GROUP BY B.CUSTOMER_ID, A.REP_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID,A.ID
 											  
 									     UNION ALL
 
-									     SELECT B.CUSTOMER_ID, 
+									     SELECT A.ID as FORM_ID,
+												B.CUSTOMER_ID, 
 											    A.REP_ENTRY_DATE AS ENTRY_DATE, 
 											    A.PAYPAL_TRANSACTION_ID, 
 											    ''Y'' AS FLAG,
@@ -587,11 +587,12 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.CUSTOMER_ID, A.REP_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID
+									   GROUP BY B.CUSTOMER_ID, A.REP_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID,A.ID
                                        
                                          UNION ALL
 
-									     SELECT B.CUSTOMER_ID, 
+									     SELECT A.ID as FORM_ID,
+												B.CUSTOMER_ID, 
 											    A.R_ENTRY_DATE AS ENTRY_DATE, 
 											    A.REC_REFERENCE, 
 											    ''T'' AS FLAG,
@@ -628,16 +629,20 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.CUSTOMER_ID, A.R_ENTRY_DATE, A.REC_REFERENCE
+									   GROUP BY B.CUSTOMER_ID, A.R_ENTRY_DATE, A.REC_REFERENCE,A.ID
 									   ) C
 							     WHERE CASE
 										  WHEN \'',P_FORM_TYPE,'\' <> "-1" THEN FLAG IN (',P_FORM_TYPE,')
 										  ELSE TRUE
 									   END
 							  ) Z
-				     GROUP BY CUSTOMER_ID, ENTRY_DATE, PAYPAL_TRANSACTION_ID, FLAG, FORM WITH ROLLUP
-					   HAVING ENTRY_DATE IS NULL OR FORM IS NOT NULL
-					    LIMIT ',P_START,', ',P_LENGTH,';');
+							  GROUP BY FORM_ID,
+									   CUSTOMER_ID,
+									   ENTRY_DATE,
+									   PAYPAL_TRANSACTION_ID,
+                                       FLAG,
+									   FORM WITH ROLLUP
+									   having Form_Id is null or FORM is not null LIMIT ',P_START,', ',P_LENGTH,';');
     PREPARE STMP FROM @QRY;
     EXECUTE STMP ;
     DEALLOCATE PREPARE STMP;
