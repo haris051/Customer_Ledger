@@ -276,7 +276,7 @@ BEGIN
 											    ''Beginning Balance'' AS FORM,
 											    NULL  AS DEBIT,
 											    NULL AS CREDIT,
-											    TOTAL_AMOUNT + IFNULL((\'',BEGININGBALANCE,'\'),0) AS FINAL
+											    IFNULL(TOTAL_AMOUNT,0) + IFNULL((\'',BEGININGBALANCE,'\'),0) AS FINAL
 										   FROM CUSTOMER
 										  WHERE CASE
 												   WHEN \'',P_CUSTOMER_ID,'\' <> "" THEN ID = \'',P_CUSTOMER_ID,'\'
